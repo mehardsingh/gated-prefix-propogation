@@ -1,23 +1,20 @@
 import torch
 import torch.nn as nn
-from transformers import BertModel, BertTokenizer, AutoModelForSequenceClassification, AutoTokenizer, BertPreTrainedModel, AutoModel, AutoConfig
+from transformers import AutoConfig, DistilBertModel, BertModel, BertTokenizer, AutoModelForSequenceClassification, AutoTokenizer, DistilBertPreTrainedModel
 import torch.nn.functional as F
 
-class PrefixTunedBert(BertPreTrainedModel):
+class PrefixTunedDistilbert(DistilBertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
         self.config = config
 
-        self.bert = BertModel(config)
-        print(self.bert)
-        classifier_dropout = (
-            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
-        )
-        self.dropout = nn.Dropout(classifier_dropout)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.distilbert = DistilBertModel(config)
+        self.pre_classifier = nn.Linear(config.dim, config.dim)
+        self.classifier = nn.Linear(config.dim, config.num_labels)
+        self.dropout = nn.Dropout(config.seq_classif_dropout)
 
-        self.num_layers = len(self.bert.encoder.layer)
+        self.num_layers = len(self.distilbert.transformer.layer)
         self.hidden_size = self.config.hidden_size
         self.prefix_len = self.config.prefix_len
         self.prefix = torch.nn.Parameter(torch.randn(
@@ -30,6 +27,26 @@ class PrefixTunedBert(BertPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
+
+    def get_position_embeddings(self) -> nn.Embedding:
+        """
+        Returns the position embeddings
+        """
+        return self.distilbert.get_position_embeddings()
+
+    def resize_position_embeddings(self, new_num_position_embeddings: int):
+        """
+        Resizes position embeddings of the model if `new_num_position_embeddings != config.max_position_embeddings`.
+
+        Arguments:
+            new_num_position_embeddings (`int`):
+                The number of new position embedding matrix. If position embeddings are learned, increasing the size
+                will add newly initialized vectors at the end, whereas reducing the size will remove vectors from the
+                end. If position embeddings are not learned (*e.g.* sinusoidal position embeddings), increasing the
+                size will add correct vectors at the end following the position encoding algorithm, whereas reducing
+                the size will remove vectors from the end.
+        """
+        self.distilbert.resize_position_embeddings(new_num_position_embeddings)
 
     def add_curr_prefix(self, layer_idx, curr_hidden_state, attention_mask, contains_prefix=False):
         device = curr_hidden_state.device
@@ -52,28 +69,23 @@ class PrefixTunedBert(BertPreTrainedModel):
         return curr_hidden_state, attention_mask
         
     def forward(self, input_ids, attention_mask):
-        input_shape = input_ids.size()
-
-        curr_hidden_state = self.bert.embeddings(input_ids)
-
-        extended_attention_mask = self.get_extended_attention_mask(attention_mask, input_shape)
-
-        for i in range(len(self.bert.encoder.layer)):
-            layer = self.bert.encoder.layer[i]
+        curr_hidden_state = self.distilbert.embeddings(input_ids)
+        for i in range(len(self.distilbert.transformer.layer)):
+            layer = self.distilbert.transformer.layer[i]
             curr_hidden_state, attention_mask = self.add_curr_prefix(
                 i, curr_hidden_state, attention_mask, i!=0
             )
-            extended_attention_mask = self.get_extended_attention_mask(attention_mask, (curr_hidden_state.shape[0], curr_hidden_state.shape[1]))
-            outputs = layer(curr_hidden_state, extended_attention_mask)
+            outputs = layer(curr_hidden_state, attention_mask)
             curr_hidden_state = outputs[0]
         
         pooled_output = curr_hidden_state[:,0,:]
-        pooled_output = self.dropout(pooled_output)
+        pooled_output = self.pre_classifier(pooled_output)
+        pooled_output = self.dropout(F.relu(pooled_output))
         logits = self.classifier(pooled_output)
 
         return logits
 
-model_name = "google-bert/bert-base-uncased"
+model_name = "distilbert/distilbert-base-uncased"
 num_labels = 5
 prefix_len = 5
 
@@ -81,7 +93,7 @@ config = AutoConfig.from_pretrained(model_name)
 config.num_labels = num_labels
 config.prefix_len = prefix_len
 
-model = PrefixTunedBert(config=config)
+model = PrefixTunedDistilbert(config)
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 text = ["The movie is bad", "This was the greatest movie I have ever seen"]
