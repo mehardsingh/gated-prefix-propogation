@@ -1,26 +1,23 @@
 from datasets import load_dataset
+from transformers import AutoTokenizer, AutoConfig
+from transformers import DataCollatorWithPadding
+import evaluate
+import numpy as np
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
+
+from distilbert_prefix import DistilBertForSequenceClassification_Prefix
+from bert_prefix import BertForSequenceClassification_Prefix
 
 imdb = load_dataset("imdb")
-
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
+model_name = "google-bert/bert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 def preprocess_function(examples):
-    return tokenizer(examples["text"], truncation=True)
+    return tokenizer(examples["text"], truncation=True, max_length=512-2)
 
 tokenized_imdb = imdb.map(preprocess_function, batched=True)
-
-from transformers import DataCollatorWithPadding
-
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-
-import evaluate
-
 accuracy = evaluate.load("accuracy")
-
-import numpy as np
-
 
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
@@ -30,12 +27,20 @@ def compute_metrics(eval_pred):
 id2label = {0: "NEGATIVE", 1: "POSITIVE"}
 label2id = {"NEGATIVE": 0, "POSITIVE": 1}
 
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
-from distilbert_prefix import DistilBertForSequenceClassification_Prefix
+# config = AutoConfig.from_pretrained(model_name)
+config = AutoConfig.from_pretrained(model_name)
+config.num_labels = 2
+config.prefix_len = 2
 
-model = DistilBertForSequenceClassification_Prefix.from_pretrained(
-    "distilbert/distilbert-base-uncased", num_labels=2, id2label=id2label, label2id=label2id, prefix_len=2
-)
+# model = DistilBertForSequenceClassification_Prefix(config=config)
+model = BertForSequenceClassification_Prefix(config=config)
+
+for name, param in model.named_parameters():
+    if not name in ["bert.encoder.prefix", "bert.pooler.dense.weight", "bert.pooler.dense.bias", "classifier.weight", "classifier.bias"]:
+        param.requires_grad = False
+
+total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Number of parameters: {total_params}")
 
 training_args = TrainingArguments(
     output_dir="./my_awesome_model",
@@ -47,7 +52,7 @@ training_args = TrainingArguments(
     evaluation_strategy="epoch",
     save_strategy="epoch",
     load_best_model_at_end=True,
-    push_to_hub=True,
+    no_cuda=True
 )
 
 trainer = Trainer(

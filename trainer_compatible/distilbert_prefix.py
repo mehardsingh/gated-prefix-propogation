@@ -22,7 +22,7 @@ class Transformer_Prefix(Transformer):
             config.hidden_size
         ))
 
-    def add_curr_prefix(self, layer_idx, curr_hidden_state, attention_mask):
+    def add_curr_prefix(self, layer_idx, curr_hidden_state):
         device = curr_hidden_state.device
         batch_size = curr_hidden_state.shape[0]
         curr_prefix = self.prefix[layer_idx].unsqueeze(0).repeat(batch_size, 1, 1)
@@ -32,12 +32,7 @@ class Transformer_Prefix(Transformer):
             curr_hidden_state[:,self.config.prefix_len:,:]
         ), dim=1)
 
-        attention_mask = torch.cat((
-            torch.ones(batch_size, self.config.prefix_len).to(device),
-            attention_mask[:,self.config.prefix_len:]
-        ), dim=1)
-
-        return curr_hidden_state, attention_mask
+        return curr_hidden_state
     
     def add_random_prefix(self, hidden_state, attention_mask):
         hidden_state = torch.cat((
@@ -55,8 +50,6 @@ class Transformer_Prefix(Transformer):
         ), dim=1)
 
         return hidden_state, attention_mask
-
-        return hidden_state
 
     def forward(
         self,
@@ -84,16 +77,16 @@ class Transformer_Prefix(Transformer):
         all_hidden_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
 
-        print(attn_mask.shape)
+        # print(attn_mask.shape)
 
         hidden_state = x
         hidden_state, attn_mask = self.add_random_prefix(hidden_state, attn_mask)
 
-        print(hidden_state.shape, attn_mask.shape)
+        # print(hidden_state.shape, attn_mask.shape)
 
         for i, layer_module in enumerate(self.layer):
-            hidden_state, attn_mask = self.add_curr_prefix(i, hidden_state, attn_mask)
-            print(i, hidden_state.shape)
+            hidden_state = self.add_curr_prefix(i, hidden_state)
+            # print(i, hidden_state.shape)
 
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_state,)
@@ -146,19 +139,19 @@ class DistilBertForSequenceClassification_Prefix(DistilBertForSequenceClassifica
         super().__init__(config)
         self.distilbert = DistilBertModel_Prefix(config)
 
-model_name = "distilbert-base-uncased"
-config = AutoConfig.from_pretrained("distilbert-base-uncased")
-config.num_labels = 3
-config.prefix_len = 2
+# model_name = "distilbert-base-uncased"
+# config = AutoConfig.from_pretrained("distilbert-base-uncased")
+# config.num_labels = 3
+# config.prefix_len = 2
 
-model = DistilBertForSequenceClassification_Prefix(config=config)
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
-input_ids = tokenizer_out["input_ids"]
-attention_mask = tokenizer_out["attention_mask"]
+# model = DistilBertForSequenceClassification_Prefix(config=config)
+# tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+# tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
+# input_ids = tokenizer_out["input_ids"]
+# attention_mask = tokenizer_out["attention_mask"]
 
-# input = torch.rand(8, 4, 768)
+# # input = torch.rand(8, 4, 768)
 
-output = model(input_ids=input_ids, attention_mask=attention_mask)
+# output = model(input_ids=input_ids, attention_mask=attention_mask)
 
-print(output.logits.shape)
+# print(output.logits.shape)
