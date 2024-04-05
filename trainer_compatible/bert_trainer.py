@@ -7,6 +7,7 @@ from transformers import AutoModelForSequenceClassification, TrainingArguments, 
 
 from distilbert_prefix import DistilBertForSequenceClassification_Prefix
 from bert_prefix import BertForSequenceClassification_Prefix
+from bert_prefix_gated import BertForSequenceClassification_Prefix_Gated
 
 imdb = load_dataset("imdb")
 model_name = "google-bert/bert-base-uncased"
@@ -33,7 +34,7 @@ config.num_labels = 2
 config.prefix_len = 2
 
 # model = DistilBertForSequenceClassification_Prefix(config=config)
-model = BertForSequenceClassification_Prefix(config=config)
+model = BertForSequenceClassification_Prefix_Gated(config=config)
 
 for name, param in model.named_parameters():
     if not name in ["bert.encoder.prefix", "bert.pooler.dense.weight", "bert.pooler.dense.bias", "classifier.weight", "classifier.bias"]:
