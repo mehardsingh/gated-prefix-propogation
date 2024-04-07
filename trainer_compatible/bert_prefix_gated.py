@@ -41,12 +41,15 @@ class BertEncoder_Prefix_Gated(BertEncoder):
 
         existing_prefix = curr_hidden_state[:,:self.config.prefix_len,:] # b x L x h
         next_prefix = self.prefix[layer_idx].unsqueeze(0).repeat(batch_size, 1, 1) # b x L x H
-        concat_prefix = torch.cat([existing_prefix, next_prefix], dim=1) # b x 2L x H
-        pooled_prefix = torch.mean(concat_prefix, dim=1) # b x h
-        gate_mlp = self.gate_mlps[layer_idx]
-        gate = gate_mlp(pooled_prefix).unsqueeze(-1) # b x 1
 
-        new_prefix = (next_prefix * gate) + (existing_prefix * (1 - gate))
+        if layer_idx == 0:
+            new_prefix = next_prefix
+        else:
+            concat_prefix = torch.cat([existing_prefix, next_prefix], dim=1) # b x 2L x H
+            pooled_prefix = torch.mean(concat_prefix, dim=1) # b x h
+            gate_mlp = self.gate_mlps[layer_idx]
+            gate = gate_mlp(pooled_prefix).unsqueeze(-1) # b x 1
+            new_prefix = (next_prefix * gate) + (existing_prefix * (1 - gate))
 
         curr_hidden_state = torch.cat((
             new_prefix,
@@ -171,22 +174,22 @@ class BertForSequenceClassification_Prefix_Gated(BertForSequenceClassification):
         super().__init__(config)
         self.bert = BertModel_Prefix_Gated(config)
 
-# model_name = "google-bert/bert-base-uncased"
-# config = AutoConfig.from_pretrained(model_name)
-# config.num_labels = 3
-# config.prefix_len = 2
+model_name = "google-bert/bert-base-uncased"
+config = AutoConfig.from_pretrained(model_name)
+config.num_labels = 3
+config.prefix_len = 2
 
-# model = BertForSequenceClassification_Prefix_Gated(config=config)
-# tokenizer = AutoTokenizer.from_pretrained(model_name)
-# tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
-# input_ids = tokenizer_out["input_ids"]
-# attention_mask = tokenizer_out["attention_mask"]
+model = BertForSequenceClassification_Prefix_Gated(config=config)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
+input_ids = tokenizer_out["input_ids"]
+attention_mask = tokenizer_out["attention_mask"]
 
-# # input = torch.rand(8, 4, 768)
+# input = torch.rand(8, 4, 768)
 
-# output = model(input_ids=input_ids, attention_mask=attention_mask)
+output = model(input_ids=input_ids, attention_mask=attention_mask)
 
-# print(output.logits.shape)
+print(output.logits.shape)
         
 # =============================
 # N layers

@@ -7,15 +7,21 @@ Does adaptive prefix tuning on encoder-only models (such as BERT) improve perfor
     - training time (in hours)
     - FLOPs (floating point operations per second) (maybe)
 
-How to determine if this is the case? [using prefix length of 4, 8, 16, 32]
+How to determine if this is the case? 
 - Train baseline (fine-tune only last layer)
 - Train prefix-tuned
 - Train gated prefix-tuned
 
 and then compare
 
-Using 3 datasets: Multi-NLI, AGNews, and one of the small datasets (Treebank, COLA, or Scitail)
-- 1 person take 1 dataset
+# Plan
+
+For Multi-NLI dataset, train prefix-tuned and adaptive-prefix tuned using prefix length of 4, 16, 64 (reduce dataset size so this is managable, maybe train for 1-2 hours each). [Jiaqi]
+
+Then, pick the best prefix length and use this for the following experiments:
+
+Using 3 datasets: Multi-NLI [Jiaqi], AGNews, and one of the small datasets (Treebank, COLA, or Scitail)
+- 1 person take 1 dataset. Train all 3 models (baseline, prefix, prefix-gated) and both model types (BERT and ROBERTA) for each dataset. So, 6 trained models total.
 - since the large datasets might be quite big, feel free to downsample the dataset
 
 # Reseach Questions
