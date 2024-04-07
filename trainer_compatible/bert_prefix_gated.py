@@ -174,22 +174,22 @@ class BertForSequenceClassification_Prefix_Gated(BertForSequenceClassification):
         super().__init__(config)
         self.bert = BertModel_Prefix_Gated(config)
 
-model_name = "google-bert/bert-base-uncased"
-config = AutoConfig.from_pretrained(model_name)
-config.num_labels = 3
-config.prefix_len = 2
+# model_name = "google-bert/bert-base-uncased"
+# config = AutoConfig.from_pretrained(model_name)
+# config.num_labels = 3
+# config.prefix_len = 2
 
-model = BertForSequenceClassification_Prefix_Gated(config=config)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
-input_ids = tokenizer_out["input_ids"]
-attention_mask = tokenizer_out["attention_mask"]
+# model = BertForSequenceClassification_Prefix_Gated(config=config)
+# tokenizer = AutoTokenizer.from_pretrained(model_name)
+# tokenizer_out = tokenizer(["My name is Vishwa", "Shoulder ice pack thing"], max_length=512-config.prefix_len, padding=True, truncation=True, return_tensors='pt')
+# input_ids = tokenizer_out["input_ids"]
+# attention_mask = tokenizer_out["attention_mask"]
 
-# input = torch.rand(8, 4, 768)
+# # input = torch.rand(8, 4, 768)
 
-output = model(input_ids=input_ids, attention_mask=attention_mask)
+# output = model(input_ids=input_ids, attention_mask=attention_mask)
 
-print(output.logits.shape)
+# print(output.logits.shape)
         
 # =============================
 # N layers
