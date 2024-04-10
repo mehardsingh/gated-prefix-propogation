@@ -5,7 +5,7 @@ import evaluate
 import numpy as np
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 
-from distilbert_prefix import DistilBertForSequenceClassification_Prefix
+from early_version.distilbert_prefix import DistilBertForSequenceClassification_Prefix
 from bert_prefix import BertForSequenceClassification_Prefix
 from bert_prefix_gated import BertForSequenceClassification_Prefix_Gated
 
