@@ -1,6 +1,6 @@
-# prefix-tuning
-The plan.md file provides a high-level plan for our exploration.
+# Gated Prefix Propogation
 
-Hugging Face trainer compatable model class files for BERT and Roberta for both vanilla prefix propagation and gated prefix propagation can be found in the trainer_compatible directory. This is what we used for training and testing. 
 
-The actual training scripts can be found in train_multinli.ipynb, ./train_agnews/final_train_agnews.ipynb, and train_cola.ipynb.
+Our Huggingface `Trainer` compatable model class files for both vanilla deep prompt tuning (P-Tuning v2) and Gated Prefix Propagation can be found in the `./trainer_compatible` directory.
+
+The actual training scripts can be found `./training_scripts`. We train an evaluate our models on the MultiNLI, AGNews, and CoLA datasets.
